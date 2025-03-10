@@ -299,7 +299,6 @@ subroutine get_energy(self, mol, cache, wfn, energies)
 
    
    !> Add solvation energy to total energy
-   ! The factor of 0.5 is correct here
    energies(:) = energies + self%keps * 0.5_wp * sum(ptr%ddx_state%xs * ptr%ddx_state%psi, 1) 
  
 end subroutine get_energy
