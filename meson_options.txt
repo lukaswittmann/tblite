@@ -32,6 +32,14 @@ option(
 )
 
 option(
+  'ilp64',
+  type: 'boolean',
+  value: false,
+  yield: true,
+  description: 'use ILP64 (64-bit integer) BLAS/LAPACK backend',
+)
+
+option(
   'openmp',
   type: 'boolean',
   value: true,

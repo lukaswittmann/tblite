@@ -118,6 +118,15 @@ The required Fortran modules will be fetched automatically from the upstream rep
 
    To produce statically linked binaries set ``--default-library=static`` and add ``-Dfortran_link_args=-static`` as well.
 
+To build against a 64-bit integer (ILP64) linear algebra backend add ``-Dilp64=true``.
+This selects the 64-bit integer interface of the BLAS/LAPACK routines and requires an ILP64
+build of the backend, *e.g.* OpenBLAS compiled with ``USE_64BITINT=1`` (discovered as
+``openblas64``) or the ``*_ilp64`` MKL libraries.
+The option is forwarded to the Fortran subprojects that call into BLAS/LAPACK, so the whole
+stack is built with a consistent integer width.
+When using CMake pass ``-DTBLITE_WITH_ILP64=ON`` instead; in this case make sure the
+``LAPACK::LAPACK`` target resolved by ``find_package(LAPACK)`` points to an ILP64 backend.
+
 To compile the project run
 
 .. code:: text

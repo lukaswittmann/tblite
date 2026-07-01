@@ -14,12 +14,19 @@
 ! You should have received a copy of the GNU Lesser General Public License
 ! along with tblite.  If not, see <https://www.gnu.org/licenses/>.
 
-!> @file tblite/lapack/getri.f90
+!> @file tblite/lapack/getri.F90
 !> Provides wrappers for computing a matrix inverse
+
+! Integer kind used to interface with the external BLAS/LAPACK backend.
+! Defaults to 32-bit indices (LP64); define IK=i8 to build against an
+! ILP64 (64-bit integer) linear algebra backend.
+#ifndef IK
+#define IK i4
+#endif
 
 !> Wrappers to obtain the inverse of a matrix
 module tblite_lapack_getri
-   use mctc_env, only : sp, dp
+   use mctc_env, only : sp, dp, ik => IK
    implicit none
    private
 
@@ -44,24 +51,24 @@ module tblite_lapack_getri
    !> inv(A)*L = inv(U) for inv(A).
    interface lapack_getri
       pure subroutine sgetri(n, a, lda, ipiv, work, lwork, info)
-         import :: sp
+         import :: sp, ik
+         integer(ik), intent(in) :: ipiv(*)
+         integer(ik), intent(out) :: info
+         integer(ik), intent(in) :: n
+         integer(ik), intent(in) :: lda
+         integer(ik), intent(in) :: lwork
          real(sp), intent(inout) :: a(lda, *)
-         integer, intent(in) :: ipiv(*)
-         integer, intent(out) :: info
-         integer, intent(in) :: n
-         integer, intent(in) :: lda
          real(sp), intent(inout) :: work(*)
-         integer, intent(in) :: lwork
       end subroutine sgetri
       pure subroutine dgetri(n, a, lda, ipiv, work, lwork, info)
-         import :: dp
+         import :: dp, ik
+         integer(ik), intent(in) :: ipiv(*)
+         integer(ik), intent(out) :: info
+         integer(ik), intent(in) :: n
+         integer(ik), intent(in) :: lda
+         integer(ik), intent(in) :: lwork
          real(dp), intent(inout) :: a(lda, *)
-         integer, intent(in) :: ipiv(*)
-         integer, intent(out) :: info
-         integer, intent(in) :: n
-         integer, intent(in) :: lda
          real(dp), intent(inout) :: work(*)
-         integer, intent(in) :: lwork
       end subroutine dgetri
    end interface lapack_getri
 
@@ -71,18 +78,21 @@ subroutine wrap_sgetri(amat, ipiv, info)
    real(sp), intent(inout) :: amat(:, :)
    integer, intent(in) :: ipiv(:)
    integer, intent(out) :: info
-   integer :: n, lda, lwork
+   integer(ik) :: n, lda, lwork, stat
+   integer(ik) :: jpiv(size(ipiv))
    real(sp), allocatable :: work(:)
    real(sp) :: test(1)
+   jpiv(:) = ipiv
    lda = max(1, size(amat, 1))
    n = size(amat, 2)
    lwork = -1
-   call lapack_getri(n, amat, lda, ipiv, test, lwork, info)
-   if (info == 0) then
+   call lapack_getri(n, amat, lda, jpiv, test, lwork, stat)
+   if (stat == 0) then
       lwork = nint(test(1))
       allocate(work(lwork))
-      call lapack_getri(n, amat, lda, ipiv, work, lwork, info)
+      call lapack_getri(n, amat, lda, jpiv, work, lwork, stat)
    end if
+   info = stat
 end subroutine wrap_sgetri
 
 
@@ -90,18 +100,21 @@ subroutine wrap_dgetri(amat, ipiv, info)
    real(dp), intent(inout) :: amat(:, :)
    integer, intent(in) :: ipiv(:)
    integer, intent(out) :: info
-   integer :: n, lda, lwork
+   integer(ik) :: n, lda, lwork, stat
+   integer(ik) :: jpiv(size(ipiv))
    real(dp), allocatable :: work(:)
    real(dp) :: test(1)
+   jpiv(:) = ipiv
    lda = max(1, size(amat, 1))
    n = size(amat, 2)
    lwork = -1
-   call lapack_getri(n, amat, lda, ipiv, test, lwork, info)
-   if (info == 0) then
+   call lapack_getri(n, amat, lda, jpiv, test, lwork, stat)
+   if (stat == 0) then
       lwork = nint(test(1))
       allocate(work(lwork))
-      call lapack_getri(n, amat, lda, ipiv, work, lwork, info)
+      call lapack_getri(n, amat, lda, jpiv, work, lwork, stat)
    end if
+   info = stat
 end subroutine wrap_dgetri
 
 end module tblite_lapack_getri

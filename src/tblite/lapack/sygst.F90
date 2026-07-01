@@ -14,9 +14,19 @@
 ! You should have received a copy of the GNU Lesser General Public License
 ! along with tblite.  If not, see <https://www.gnu.org/licenses/>.
 
+!> @file tblite/lapack/sygst.F90
+!> Reduces a real symmetric-definite generalized eigenproblem to standard form.
+
+! Integer kind used to interface with the external BLAS/LAPACK backend.
+! Defaults to 32-bit indices (LP64); define IK=i8 to build against an
+! ILP64 (64-bit integer) linear algebra backend.
+#ifndef IK
+#define IK i4
+#endif
+
 !> Reduces a real symmetric-definite generalized eigenproblem to standard form.
 module tblite_lapack_sygst
-   use mctc_env, only : sp, dp
+   use mctc_env, only : sp, dp, ik => IK
    implicit none
    private
 
@@ -49,26 +59,26 @@ module tblite_lapack_sygst
    !> B must have been previously factorized as U**T*U or L*L**T by POTRF.
    interface lapack_sygst
       pure subroutine ssygst(itype, uplo, n, a, lda, b, ldb, info)
-         import :: sp
+         import :: sp, ik
+         integer(ik), intent(in) :: itype
+         integer(ik), intent(out) :: info
+         integer(ik), intent(in) :: n
+         integer(ik), intent(in) :: lda
+         integer(ik), intent(in) :: ldb
          real(sp), intent(inout) :: a(lda, *)
          real(sp), intent(in) :: b(ldb, *)
-         integer, intent(in) :: itype
          character(len=1), intent(in) :: uplo
-         integer, intent(out) :: info
-         integer, intent(in) :: n
-         integer, intent(in) :: lda
-         integer, intent(in) :: ldb
       end subroutine ssygst
       pure subroutine dsygst(itype, uplo, n, a, lda, b, ldb, info)
-         import :: dp
+         import :: dp, ik
+         integer(ik), intent(in) :: itype
+         integer(ik), intent(out) :: info
+         integer(ik), intent(in) :: n
+         integer(ik), intent(in) :: lda
+         integer(ik), intent(in) :: ldb
          real(dp), intent(inout) :: a(lda, *)
          real(dp), intent(in) :: b(ldb, *)
-         integer, intent(in) :: itype
          character(len=1), intent(in) :: uplo
-         integer, intent(out) :: info
-         integer, intent(in) :: n
-         integer, intent(in) :: lda
-         integer, intent(in) :: ldb
       end subroutine dsygst
    end interface lapack_sygst
 
@@ -81,7 +91,7 @@ pure subroutine wrap_ssygst(amat, bmat, info, itype, uplo)
    character(len=1), intent(in), optional :: uplo
    integer, intent(out) :: info
    character(len=1) :: ula
-   integer :: ita, n, lda, ldb
+   integer(ik) :: ita, n, lda, ldb, stat
 
    ita = 1
    if(present(itype)) ita = itype
@@ -90,7 +100,8 @@ pure subroutine wrap_ssygst(amat, bmat, info, itype, uplo)
    lda = max(1, size(amat, 1))
    ldb = max(1, size(bmat, 1))
    n = size(amat, 2)
-   call lapack_sygst(ita, ula, n, amat, lda, bmat, ldb, info)
+   call lapack_sygst(ita, ula, n, amat, lda, bmat, ldb, stat)
+   info = stat
 end subroutine wrap_ssygst
 
 pure subroutine wrap_dsygst(amat, bmat, info, itype, uplo)
@@ -100,7 +111,7 @@ pure subroutine wrap_dsygst(amat, bmat, info, itype, uplo)
    character(len=1), intent(in), optional :: uplo
    integer, intent(out) :: info
    character(len=1) :: ula
-   integer :: ita, n, lda, ldb
+   integer(ik) :: ita, n, lda, ldb, stat
 
    ita = 1
    if(present(itype)) ita = itype
@@ -109,7 +120,8 @@ pure subroutine wrap_dsygst(amat, bmat, info, itype, uplo)
    lda = max(1, size(amat, 1))
    ldb = max(1, size(bmat, 1))
    n = size(amat, 2)
-   call lapack_sygst(ita, ula, n, amat, lda, bmat, ldb, info)
+   call lapack_sygst(ita, ula, n, amat, lda, bmat, ldb, stat)
+   info = stat
 end subroutine wrap_dsygst
 
 end module tblite_lapack_sygst

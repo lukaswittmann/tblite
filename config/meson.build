@@ -79,15 +79,26 @@ if lapack_vendor == 'auto'
   endif
 endif
 
+# Select the integer width used to interface with the BLAS/LAPACK backend.
+# ILP64 (64-bit integers) requires an ILP64 build of the linear algebra
+# library; the interface kind is selected at compile time via the IK macro.
+if get_option('ilp64')
+  ilp64 = true
+  add_project_arguments('-DIK=i8', language: 'fortran')
+else
+  ilp64 = false
+  add_project_arguments('-DIK=i4', language: 'fortran')
+endif
+
 if lapack_vendor == 'mkl'
   mkl_dep = []
   if fc_id == 'intel' or fc_id == 'intel-llvm'
-    mkl_dep += cc.find_library('mkl_intel_lp64')
+    mkl_dep += cc.find_library(ilp64 ? 'mkl_intel_ilp64' : 'mkl_intel_lp64')
     if get_option('openmp')
       mkl_dep += cc.find_library('mkl_intel_thread')
     endif
   elif fc_id == 'gcc'
-    mkl_dep += cc.find_library('mkl_gf_lp64')
+    mkl_dep += cc.find_library(ilp64 ? 'mkl_gf_ilp64' : 'mkl_gf_lp64')
     if get_option('openmp')
       mkl_dep += cc.find_library('mkl_gnu_thread')
     endif
@@ -105,15 +116,15 @@ elif lapack_vendor == 'mkl-rt'
   lib_deps += mkl_dep
   add_project_arguments(['-DWITH_MKL'], language: 'fortran')
 elif lapack_vendor == 'openblas'
-  openblas_dep = dependency('openblas', required: false)
+  openblas_dep = dependency(ilp64 ? 'openblas64' : 'openblas', required: false)
   if not openblas_dep.found()
-    openblas_dep = cc.find_library('openblas')
+    openblas_dep = cc.find_library(ilp64 ? 'openblas64' : 'openblas')
   endif
   lib_deps += openblas_dep
   if not fc.links('external dsytrs; call dsytrs(); end', dependencies: openblas_dep)
-    lapack_dep = dependency('lapack', required: false)
+    lapack_dep = dependency(ilp64 ? 'lapack64' : 'lapack', required: false)
     if not lapack_dep.found()
-      lapack_dep = cc.find_library('lapack')
+      lapack_dep = cc.find_library(ilp64 ? 'lapack64' : 'lapack')
     endif
     lib_deps += lapack_dep
   endif
@@ -124,14 +135,14 @@ elif lapack_vendor == 'custom'
   endforeach
 
 else
-  lapack_dep = dependency('lapack', required: false)
+  lapack_dep = dependency(ilp64 ? 'lapack64' : 'lapack', required: false)
   if not lapack_dep.found()
-    lapack_dep = cc.find_library('lapack')
+    lapack_dep = cc.find_library(ilp64 ? 'lapack64' : 'lapack')
   endif
   lib_deps += lapack_dep
-  blas_dep = dependency('blas', required: false)
+  blas_dep = dependency(ilp64 ? 'blas64' : 'blas', required: false)
   if not blas_dep.found()
-    blas_dep = cc.find_library('blas')
+    blas_dep = cc.find_library(ilp64 ? 'blas64' : 'blas')
   endif
   lib_deps += blas_dep
 endif

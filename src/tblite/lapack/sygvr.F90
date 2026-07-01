@@ -14,8 +14,18 @@
 ! You should have received a copy of the GNU Lesser General Public License
 ! along with tblite.  If not, see <https://www.gnu.org/licenses/>.
 
+!> @file tblite/lapack/sygvr.F90
+!> Provides an interface to the relatively robust eigenvalue solver
+
+! Integer kind used to interface with the external BLAS/LAPACK backend.
+! Defaults to 32-bit indices (LP64); define IK=i8 to build against an
+! ILP64 (64-bit integer) linear algebra backend.
+#ifndef IK
+#define IK i4
+#endif
+
 module tblite_lapack_sygvr
-   use mctc_env, only : sp, dp, wp, error_type, fatal_error
+   use mctc_env, only : sp, dp, wp, ik => IK, error_type, fatal_error
    use tblite_output_format, only : format_string
    use tblite_scf_diag, only : diag_solver_type
    use tblite_lapack_sygst, only : wrap_sygst
@@ -37,62 +47,62 @@ module tblite_lapack_sygvr
    interface lapack_syevr
       pure subroutine ssyevr(jobz, range, uplo, n, a, lda, vl, vu, il, iu, abstol, m, w, &
             & z, ldz, isuppz, work, lwork, iwork, liwork, info)
-         import :: sp
+         import :: sp, ik
+         integer(ik), intent(in) :: il
+         integer(ik), intent(in) :: iu
+         integer(ik), intent(out) :: m
+         integer(ik), intent(out) :: isuppz(*)
+         integer(ik), intent(out) :: info
+         integer(ik), intent(in) :: n
+         integer(ik), intent(in) :: lda
+         integer(ik), intent(in) :: ldz
+         integer(ik), intent(in) :: lwork
+         integer(ik), intent(inout) :: iwork(*)
+         integer(ik), intent(in) :: liwork
          real(sp), intent(inout) :: a(lda, *)
          real(sp), intent(out) :: w(*)
          character(len=1), intent(in) :: uplo
          real(sp), intent(out) :: z(ldz, *)
          real(sp), intent(in) :: vl
          real(sp), intent(in) :: vu
-         integer, intent(in) :: il
-         integer, intent(in) :: iu
-         integer, intent(out) :: m
-         integer, intent(out) :: isuppz(*)
          real(sp), intent(in) :: abstol
-         integer, intent(out) :: info
          character(len=1), intent(in) :: jobz
          character(len=1), intent(in) :: range
-         integer, intent(in) :: n
-         integer, intent(in) :: lda
-         integer, intent(in) :: ldz
          real(sp), intent(inout) :: work(*)
-         integer, intent(in) :: lwork
-         integer, intent(inout) :: iwork(*)
-         integer, intent(in) :: liwork
       end subroutine ssyevr
       pure subroutine dsyevr(jobz, range, uplo, n, a, lda, vl, vu, il, iu, abstol, m, w, &
             & z, ldz, isuppz, work, lwork, iwork, liwork, info)
-         import :: dp
+         import :: dp, ik
+         integer(ik), intent(in) :: il
+         integer(ik), intent(in) :: iu
+         integer(ik), intent(out) :: m
+         integer(ik), intent(out) :: isuppz(*)
+         integer(ik), intent(out) :: info
+         integer(ik), intent(in) :: n
+         integer(ik), intent(in) :: lda
+         integer(ik), intent(in) :: ldz
+         integer(ik), intent(in) :: lwork
+         integer(ik), intent(inout) :: iwork(*)
+         integer(ik), intent(in) :: liwork
          real(dp), intent(inout) :: a(lda, *)
          real(dp), intent(out) :: w(*)
          character(len=1), intent(in) :: uplo
          real(dp), intent(out) :: z(ldz, *)
          real(dp), intent(in) :: vl
          real(dp), intent(in) :: vu
-         integer, intent(in) :: il
-         integer, intent(in) :: iu
-         integer, intent(out) :: m
-         integer, intent(out) :: isuppz(*)
          real(dp), intent(in) :: abstol
-         integer, intent(out) :: info
          character(len=1), intent(in) :: jobz
          character(len=1), intent(in) :: range
-         integer, intent(in) :: n
-         integer, intent(in) :: lda
-         integer, intent(in) :: ldz
          real(dp), intent(inout) :: work(*)
-         integer, intent(in) :: lwork
-         integer, intent(inout) :: iwork(*)
-         integer, intent(in) :: liwork
       end subroutine dsyevr
    end interface lapack_syevr
 
 
    type, public, extends(diag_solver_type) :: sygvr_solver
       private
-      integer :: n = 0
-      integer, allocatable :: iwork(:)
-      integer, allocatable :: isuppz(:)
+      integer(ik) :: n = 0
+      integer(ik), allocatable :: iwork(:)
+      integer(ik), allocatable :: isuppz(:)
       real(sp), allocatable :: swork(:)
       real(sp), allocatable :: sbmat(:, :)
       real(sp), allocatable :: schole(:)
@@ -127,7 +137,8 @@ subroutine solve_sp(self, hmat, smat, eval, error)
    character(len=1), parameter :: uplo = 'U'
 
    logical :: upper
-   integer :: info, lswork, liwork, m, ii, jj
+   integer :: info, ii, jj
+   integer(ik) :: iinfo, lswork, liwork, m
    real(sp) :: abstol, vl, vu
    character(len=1) :: trans, uplo_new
 
@@ -139,7 +150,7 @@ subroutine solve_sp(self, hmat, smat, eval, error)
       allocate(self%swork(lswork))
    end if
    if (.not.allocated(self%iwork)) then
-      liwork = max(1, 10 * self%n)
+      liwork = max(1_ik, 10 * self%n)
       allocate(self%iwork(liwork))
    end if
    if (.not.allocated(self%schole)) then
@@ -183,10 +194,10 @@ subroutine solve_sp(self, hmat, smat, eval, error)
       end do
    end if
 
-   call lapack_syevr('V', 'A', uplo, self%n, hmat, self%n, vl, vu, 1, self%n, abstol, &
+   call lapack_syevr('V', 'A', uplo, self%n, hmat, self%n, vl, vu, 1_ik, self%n, abstol, &
       & m, eval, self%sbmat, self%n, self%isuppz, self%swork, lswork, self%iwork, liwork, &
-      & info)
-   call handle_info(error, info)
+      & iinfo)
+   call handle_info(error, int(iinfo))
    if (allocated(error)) return
 
    ! Backtransform eigenvectors to the original problem.
@@ -219,7 +230,8 @@ subroutine solve_dp(self, hmat, smat, eval, error)
    character(len=1), parameter :: uplo = 'U'
 
    logical :: upper
-   integer :: info, ldwork, liwork, m, ii, jj
+   integer :: info, ii, jj
+   integer(ik) :: iinfo, ldwork, liwork, m
    real(dp) :: abstol, vl, vu
    character(len=1) :: trans, uplo_new
 
@@ -231,7 +243,7 @@ subroutine solve_dp(self, hmat, smat, eval, error)
       allocate(self%dwork(ldwork))
    end if
    if (.not.allocated(self%iwork)) then
-      liwork = max(1, 10 * self%n)
+      liwork = max(1_ik, 10 * self%n)
       allocate(self%iwork(liwork))
    end if
    if (.not.allocated(self%dchole)) then
@@ -275,10 +287,10 @@ subroutine solve_dp(self, hmat, smat, eval, error)
       end do
    end if
 
-   call lapack_syevr('V', 'A', uplo, self%n, hmat, self%n, vl, vu, 1, self%n, abstol, &
+   call lapack_syevr('V', 'A', uplo, self%n, hmat, self%n, vl, vu, 1_ik, self%n, abstol, &
       & m, eval, self%dbmat, self%n, self%isuppz, self%dwork, ldwork, self%iwork, liwork, &
-      & info)
-   call handle_info(error, info)
+      & iinfo)
+   call handle_info(error, int(iinfo))
    if (allocated(error)) return
 
    ! Backtransform eigenvectors to the original problem.
@@ -303,24 +315,25 @@ end subroutine solve_dp
 
 pure function query(n, uplo, prefix) result(lwork)
    interface
-      pure integer function ilaenv(ispec, name, opts, n1, n2, n3, n4)
-         integer, intent(in) :: ispec
+      pure integer(ik) function ilaenv(ispec, name, opts, n1, n2, n3, n4)
+         import :: ik
+         integer(ik), intent(in) :: ispec
          character(len=1), intent(in) :: name
          character(len=1), intent(in) :: opts
-         integer, intent(in) :: n1
-         integer, intent(in) :: n2
-         integer, intent(in) :: n3
-         integer, intent(in) :: n4
+         integer(ik), intent(in) :: n1
+         integer(ik), intent(in) :: n2
+         integer(ik), intent(in) :: n3
+         integer(ik), intent(in) :: n4
       end function ilaenv
    end interface
-   integer, intent(in) :: n
+   integer(ik), intent(in) :: n
    character(len=1), intent(in) :: uplo
    character(len=1), intent(in) :: prefix
-   integer :: lwork
-   integer :: nb
-   nb = ilaenv(1, prefix//'SYTRD', uplo, n, -1, -1, -1)
-   nb = max(nb, ilaenv(1, prefix//'ORMTR', uplo, n, -1, -1, -1))
-   lwork = max(1, 26 * n, (nb + 1)*n)
+   integer(ik) :: lwork
+   integer(ik) :: nb
+   nb = ilaenv(1_ik, prefix//'SYTRD', uplo, n, -1_ik, -1_ik, -1_ik)
+   nb = max(nb, ilaenv(1_ik, prefix//'ORMTR', uplo, n, -1_ik, -1_ik, -1_ik))
+   lwork = max(1_ik, 26 * n, (nb + 1)*n)
 end function query
 
 pure function slamch_s() result(rmach)

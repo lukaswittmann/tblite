@@ -125,6 +125,20 @@ target_link_libraries(
   PUBLIC
   "${lib-deps}"
 )
+# Select the integer width used to interface with the BLAS/LAPACK backend.
+# ILP64 (64-bit integers) requires an ILP64 build of the linear algebra library.
+if(TBLITE_WITH_ILP64)
+  message(STATUS "Using LAPACK/BLAS ILP64 interface")
+  target_compile_definitions(
+    "${PROJECT_NAME}-lib"
+    PUBLIC "IK=i8"
+  )
+else()
+  target_compile_definitions(
+    "${PROJECT_NAME}-lib"
+    PUBLIC "IK=i4"
+  )
+endif()
 if(TBLITE_WITH_DDX)
   target_link_libraries(
     "${PROJECT_NAME}-lib"

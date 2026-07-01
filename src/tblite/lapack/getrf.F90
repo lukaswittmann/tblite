@@ -14,12 +14,19 @@
 ! You should have received a copy of the GNU Lesser General Public License
 ! along with tblite.  If not, see <https://www.gnu.org/licenses/>.
 
-!> @file tblite/lapack/getrf.f90
+!> @file tblite/lapack/getrf.F90
 !> Provides wrappers for LU factorization routines
+
+! Integer kind used to interface with the external BLAS/LAPACK backend.
+! Defaults to 32-bit indices (LP64); define IK=i8 to build against an
+! ILP64 (64-bit integer) linear algebra backend.
+#ifndef IK
+#define IK i4
+#endif
 
 !> Wrapper rountines for LU factorization
 module tblite_lapack_getrf
-   use mctc_env, only : sp, dp
+   use mctc_env, only : sp, dp, ik => IK
    implicit none
    private
 
@@ -50,22 +57,22 @@ module tblite_lapack_getrf
    !> triangular (upper trapezoidal if m < n).
    interface lapack_getrf
       pure subroutine sgetrf(m, n, a, lda, ipiv, info)
-         import :: sp
+         import :: sp, ik
+         integer(ik), intent(out) :: ipiv(*)
+         integer(ik), intent(out) :: info
+         integer(ik), intent(in) :: m
+         integer(ik), intent(in) :: n
+         integer(ik), intent(in) :: lda
          real(sp), intent(inout) :: a(lda, *)
-         integer, intent(out) :: ipiv(*)
-         integer, intent(out) :: info
-         integer, intent(in) :: m
-         integer, intent(in) :: n
-         integer, intent(in) :: lda
       end subroutine sgetrf
       pure subroutine dgetrf(m, n, a, lda, ipiv, info)
-         import :: dp
+         import :: dp, ik
+         integer(ik), intent(out) :: ipiv(*)
+         integer(ik), intent(out) :: info
+         integer(ik), intent(in) :: m
+         integer(ik), intent(in) :: n
+         integer(ik), intent(in) :: lda
          real(dp), intent(inout) :: a(lda, *)
-         integer, intent(out) :: ipiv(*)
-         integer, intent(out) :: info
-         integer, intent(in) :: m
-         integer, intent(in) :: n
-         integer, intent(in) :: lda
       end subroutine dgetrf
    end interface lapack_getrf
 
@@ -75,11 +82,14 @@ subroutine wrap_sgetrf(amat, ipiv, info)
    real(sp), intent(inout) :: amat(:, :)
    integer, intent(out) :: ipiv(:)
    integer, intent(out) :: info
-   integer :: m, n, lda
+   integer(ik) :: m, n, lda, stat
+   integer(ik) :: jpiv(size(ipiv))
    lda = max(1, size(amat, 1))
    m = size(amat, 1)
    n = size(amat, 2)
-   call lapack_getrf(m, n, amat, lda, ipiv, info)
+   call lapack_getrf(m, n, amat, lda, jpiv, stat)
+   ipiv(:) = jpiv
+   info = stat
 end subroutine wrap_sgetrf
 
 
@@ -87,11 +97,14 @@ subroutine wrap_dgetrf(amat, ipiv, info)
    real(dp), intent(inout) :: amat(:, :)
    integer, intent(out) :: ipiv(:)
    integer, intent(out) :: info
-   integer :: m, n, lda
+   integer(ik) :: m, n, lda, stat
+   integer(ik) :: jpiv(size(ipiv))
    lda = max(1, size(amat, 1))
    m = size(amat, 1)
    n = size(amat, 2)
-   call lapack_getrf(m, n, amat, lda, ipiv, info)
+   call lapack_getrf(m, n, amat, lda, jpiv, stat)
+   ipiv(:) = jpiv
+   info = stat
 end subroutine wrap_dgetrf
 
 end module tblite_lapack_getrf

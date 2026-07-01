@@ -14,9 +14,19 @@
 ! You should have received a copy of the GNU Lesser General Public License
 ! along with tblite.  If not, see <https://www.gnu.org/licenses/>.
 
+!> @file tblite/lapack/potrf.F90
+!> Computes the Cholesky factorization of a real symmetric positive definite matrix A.
+
+! Integer kind used to interface with the external BLAS/LAPACK backend.
+! Defaults to 32-bit indices (LP64); define IK=i8 to build against an
+! ILP64 (64-bit integer) linear algebra backend.
+#ifndef IK
+#define IK i4
+#endif
+
 !> Computes the Cholesky factorization of a real symmetric positive definite matrix A.
 module tblite_lapack_potrf
-   use mctc_env, only : sp, dp
+   use mctc_env, only : sp, dp, ik => IK
    implicit none
    private
 
@@ -48,20 +58,20 @@ module tblite_lapack_potrf
    !> This is the block version of the algorithm, calling Level 3 BLAS.
    interface lapack_potrf
       pure subroutine spotrf(uplo, n, a, lda, info)
-         import :: sp
+         import :: sp, ik
+         integer(ik), intent(out) :: info
+         integer(ik), intent(in) :: n
+         integer(ik), intent(in) :: lda
          real(sp), intent(inout) :: a(lda, *)
          character(len=1), intent(in) :: uplo
-         integer, intent(out) :: info
-         integer, intent(in) :: n
-         integer, intent(in) :: lda
       end subroutine spotrf
       pure subroutine dpotrf(uplo, n, a, lda, info)
-         import :: dp
+         import :: dp, ik
+         integer(ik), intent(out) :: info
+         integer(ik), intent(in) :: n
+         integer(ik), intent(in) :: lda
          real(dp), intent(inout) :: a(lda, *)
          character(len=1), intent(in) :: uplo
-         integer, intent(out) :: info
-         integer, intent(in) :: n
-         integer, intent(in) :: lda
       end subroutine dpotrf
    end interface lapack_potrf
 
@@ -71,28 +81,30 @@ subroutine wrap_spotrf(amat, info, uplo)
    real(sp), intent(inout) :: amat(:, :)
    integer, intent(out) :: info
    character(len=1), intent(in), optional :: uplo
-   integer :: n, lda
+   integer(ik) :: n, lda, stat
    character(len=1) :: ula
 
    ula = 'u'
    if (present(uplo)) ula = uplo
    lda = max(1, size(amat, 1))
    n = size(amat, 2)
-   call lapack_potrf(ula, n, amat, lda, info)
+   call lapack_potrf(ula, n, amat, lda, stat)
+   info = stat
 end subroutine wrap_spotrf
 
 subroutine wrap_dpotrf(amat, info, uplo)
    real(dp), intent(inout) :: amat(:, :)
    integer, intent(out) :: info
    character(len=1), intent(in), optional :: uplo
-   integer :: n, lda
+   integer(ik) :: n, lda, stat
    character(len=1) :: ula
 
    ula = 'u'
    if (present(uplo)) ula = uplo
    lda = max(1, size(amat, 1))
    n = size(amat, 2)
-   call lapack_potrf(ula, n, amat, lda, info)
+   call lapack_potrf(ula, n, amat, lda, stat)
+   info = stat
 end subroutine wrap_dpotrf
 
 end module tblite_lapack_potrf
